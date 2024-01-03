@@ -1,0 +1,775 @@
+title: "CommandCleaningDataNo1"
+output: html_document
+date: "2023-11-24"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+## NOMOR 1 (CLEANING DATA)
+```{r}
+## Data Preparation
+library(tidyverse) ## data manipulation
+library(openxlsx) ## opening excel 
+library(scales)
+library(plyr)
+library(gridExtra)
+library(tidymodels)
+library(vip)
+## Data Pre-processing
+library(imbalance) ## imbalance data pre-processing
+library(dplyr) ## Dataset pre-processing
+library(plyr) ## Dataset pre-processing
+library(reshape2) ## alter the data structure
+library(VIM) ## missing value imputation
+library(moments)
+## Descriptive Analysis and Visualization
+library(psych) ## descriptive analysis
+library(ggplot2) ## graphic visualization
+library(corrplot) ## correlation plot visualization
+library(corrgram) ## correlation plot visualization
+library(skimr) ## table visualization
+## Regression  Model
+library(lmtest) ## linear model classical assumption
+library(car) ## VIF value
+library(regclass) ## classical assumption test
+library(olsrr) ## outlier detection
+## Classification Model
+library(mlbench) ## machine learning benchmarks
+library(caret) ## supporting machine learning modelling
+library(AppliedPredictiveModeling) ## statistic analysis
+library(randomForest) ## random forest modelling
+library(e1071) ## naive Bayes modelling
+library(naivebayes) ## naive Bayes modelling
+library(rpart) ## decision tree modelling
+library(rpart.plot) ## decision tree plot
+library(RSNNS) ## neural network modelling
+library(neuralnet) ## neural network modelling
+library(LogicReg) ## logistic regression modelling
+library(kernlab) ## machine learning modelling
+#install.packages('rattle')
+library(rpart) ## decision tree modelling
+library(rattle) ## decision tree modelling
+#install.packages('rpart.plot')
+library(rpart.plot) ## decision tree plot
+library(RColorBrewer) ## decision tree plot
+#Clustering
+library(factoextra)  #Mengaplikasikan algoritma clustering kmeans
+library(cluster) #Mengaplikasikan algoritma clustering
+library(broom) #Manipulasi data, statistical objects into tibbles
+library(ggdendro) #Memvisualisasikan dendogram
+library(fmsb) #Memvisualisasikan radar chart
+library(NbClust) #Optimum number of Cluster
+library(RColorBrewer) #Visualisasi Warna di R
+```
+#Load Data
+```{r}
+library(readr)
+train <- read_csv("F:/000000 UAS SEMS 5/PDS/train.csv")
+View(train)
+```
+#Data Preparation
+```{r}
+glimpse(train[,c(1:10,81)])
+```
+```{r}
+dim(train)
+```
+-Numeric Colums:
+```{r}
+dim(train %>% select_if(is.numeric)) [2]
+```
+
+-Character Columns:
+```{r}
+dim(train %>% select_if(is.character))[2]
+```
+#Data Visualization
+```{r}
+ggplot(train) + aes(x = SalePrice) +  geom_histogram(binwidth = 20000, fill = "blue", color = "black") +scale_x_continuous(labels = comma, breaks = seq(0, 900000, by = 100000)) + labs(title = "Histogram of SalePrice", y = "Count") + theme_minimal() + theme(plot.title = element_text(hjust = 0.45),plot.margin = ggplot2::margin(10, 20, 10, 10),panel.grid.major.y =  element_line(color = "grey", linetype = "dashed"),panel.grid.major.x = element_blank(),panel.grid.minor.y = element_blank(),panel.grid.minor.x = element_blank())
+```
+1. Overall Quality
+```{r}
+qual_hist <- ggplot(train) + 
+  aes(x = as.factor(OverallQual)) + 
+  geom_bar(stat = "count", fill = 'steelblue') +
+  geom_text(stat='count', aes(label=..count..), vjust=-.25, color = "gray20", size= 3) + 
+  labs(title = 'Overall Quality', x= 'Quality Category') +
+  theme_minimal() + 
+  theme(
+    plot.title = element_text(hjust = 0.45),
+    plot.subtitle = element_text(hjust = 0.45),
+    axis.text.y = element_blank(),
+    panel.grid.major.y =  element_blank(),
+    axis.title.y= element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    axis.ticks.x = element_line(color = "grey"))
+    
+qual_box <- ggplot(train) + 
+  aes(x = factor(OverallQual), y = SalePrice) + 
+  geom_boxplot(color = 'steelblue', outlier.color = 'firebrick', outlier.alpha = 0.35) +
+  scale_y_continuous(breaks= seq(0, 800000, by=100000), labels = comma) +
+  labs(title = 'Overall Quality vs Sale Price', y = 'Sale Price', x= 'Quality Category') +
+  theme_minimal() + 
+  theme(
+    plot.title = element_text(hjust = 0.45),
+    panel.grid.major.y =  element_line(color = "grey", linetype = "dashed"),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    axis.ticks.x = element_line(color = "grey")
+  )
+  
+
+gridExtra::grid.arrange(qual_hist, qual_box, nrow=1)
+```
+2. Ground Living Area (GrLivArea)
+```{r}
+
+
+abv_hist <- ggplot(train) + 
+  aes(x = GrLivArea) + 
+  geom_histogram(binwidth =100, fill = "steelblue", color = "black") +
+  scale_y_continuous( breaks = seq(0, 200, by = 25)) + 
+  labs(title = "Histogram of Above Ground Living Area", y = "Count") + 
+  theme_minimal() + 
+  theme(
+    plot.title = element_text(hjust = 0.45),
+    plot.margin = ggplot2::margin(10, 20, 10, 10),
+    panel.grid.major.y =  element_line(color = "grey", linetype = "dashed"),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.minor.x = element_blank()
+  )
+
+abv_scatter <- ggplot(train) + 
+  aes(x = GrLivArea, y = SalePrice) + 
+  geom_point(color = 'steelblue', alpha = 0.35) +
+  geom_smooth(method = lm, se = FALSE, alpha = 0.5, size= 0.1, color = "grey21") +
+  scale_y_continuous(breaks= seq(0, 800000, by=100000), labels = comma) +
+  labs(title = 'GrLiveArea vs Sale Price', y = 'Sale Price', x= 'Square Feet', subtitle = "Above Ground Living Area in Square Feet") +
+  theme_minimal() + 
+  theme(
+    plot.title = element_text(hjust = 0.45),
+    plot.subtitle = element_text(hjust = 0.45),
+    panel.grid.major.y =  element_line(color = "grey", linetype = "dashed"),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    axis.ticks.x = element_line(color = "grey")
+  ) 
+
+gridExtra::grid.arrange(abv_hist, abv_scatter, nrow=1)
+```
+3. GarageCars
+```{r}
+hist <- ggplot(train) + 
+  aes(x = as.factor(GarageCars)) + 
+  geom_bar(stat = "count", fill = 'steelblue') +
+  geom_text(stat='count', aes(label=..count..), vjust=-.25, color = "gray20", size= 3) + 
+  labs(title = 'Garage Cars', x= '# of Garage Cars') +
+  theme_minimal() + 
+  theme(
+    plot.title = element_text(hjust = 0.45),
+    plot.subtitle = element_text(hjust = 0.45),
+    axis.text.y = element_blank(),
+    panel.grid.major.y =  element_blank(),
+    axis.title.y= element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    axis.ticks.x = element_line(color = "grey")
+  ) 
+
+box <- ggplot(train) + 
+  aes(x = factor(GarageCars), y = SalePrice) + 
+  geom_boxplot(color = 'steelblue', outlier.color = 'firebrick', outlier.alpha = 0.35) +
+  scale_y_continuous(breaks= seq(0, 800000, by=100000), labels = comma) +
+  labs(title = 'Garage Cars vs Sale Price', y = 'Sale Price', x= '# of Garage Cars') +
+  theme_minimal() + 
+  theme(
+    plot.title = element_text(hjust = 0.45),
+    panel.grid.major.y =  element_line(color = "grey", linetype = "dashed"),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    axis.ticks.x = element_line(color = "grey")
+  )
+
+gridExtra::grid.arrange(hist, box, nrow=1)
+```
+5. Total Basement Square Feet
+```{r}
+
+abv_hist <- ggplot(train) + 
+  aes(x = TotalBsmtSF) + 
+  geom_histogram(binwidth =100, fill = "steelblue", color = "black") +
+ # scale_y_continuous( breaks = seq(0, 200, by = 25)) + 
+  labs(title = "Histogram of Total Basement Square Feet", y = "Count") + 
+  theme_minimal() + 
+  theme(
+    plot.title = element_text(hjust = 0.45),
+    plot.margin = ggplot2::margin(10, 20, 10, 10),
+    panel.grid.major.y =  element_line(color = "grey", linetype = "dashed"),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.minor.x = element_blank()
+  )
+
+abv_scatter <- ggplot(train  ) + 
+  aes(x = TotalBsmtSF, y = SalePrice) + 
+  geom_point(color = 'steelblue', alpha = 0.35) +
+
+  geom_smooth(method = lm, se = FALSE, alpha = 0.5, size= 0.1, color = "grey21") +
+  scale_y_continuous(breaks= seq(0, 800000, by=100000), labels = comma) +
+  labs(title = 'Total Basement Square Feet vs Sale Price', y = 'Sale Price', x= 'Square Feet') +
+  theme_minimal() + 
+  theme(
+    plot.title = element_text(hjust = 0.45),
+    plot.subtitle = element_text(hjust = 0.45),
+    panel.grid.major.y =  element_line(color = "grey", linetype = "dashed"),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    axis.ticks.x = element_line(color = "grey")
+  ) 
+
+gridExtra::grid.arrange(abv_hist, abv_scatter, nrow=1)
+```
+6. First Floor Square Feet
+```{r}
+
+abv_hist <- ggplot(train) + 
+  aes(x = `1stFlrSF`) + 
+  geom_histogram(binwidth =100, fill = "steelblue", color = "black") +
+  scale_y_continuous( breaks = seq(0, 200, by = 25)) + 
+  labs(title = "Histogram of First Floor Square Feet", y = "Count") + 
+  theme_minimal() + 
+  theme(
+    plot.title = element_text(hjust = 0.45),
+    plot.margin = ggplot2::margin(10, 20, 10, 10),
+    panel.grid.major.y =  element_line(color = "grey", linetype = "dashed"),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.minor.x = element_blank()
+  )
+
+abv_scatter <- ggplot(train) + 
+  aes(x = `1stFlrSF`, y = SalePrice) + 
+  geom_point(color = 'steelblue', alpha = 0.35) +
+  geom_smooth(method = lm, se = FALSE, alpha = 0.5, size= 0.1, color = "grey21") +
+  scale_y_continuous(breaks= seq(0, 800000, by=100000), labels = comma) +
+  labs(title = 'First Floor Square Feet vs Sale Price', y = 'Sale Price', x= 'Square Feet') +
+  theme_minimal() + 
+  theme(
+    plot.title = element_text(hjust = 0.45),
+    plot.subtitle = element_text(hjust = 0.45),
+    panel.grid.major.y =  element_line(color = "grey", linetype = "dashed"),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    axis.ticks.x = element_line(color = "grey")
+  ) 
+
+gridExtra::grid.arrange(abv_hist, abv_scatter, nrow=1)
+```
+7. Full Bathroom Above Ground
+```{r}
+sale_hist <- ggplot(train) + 
+  aes(x = as.factor(FullBath)) + 
+  geom_bar(stat = "count", fill = 'steelblue') +
+  geom_text(stat='count', aes(label=..count..), vjust=-.25, color = "gray20", size= 3) + 
+  labs(title = 'Bathrooms Above Ground', x= '#') +
+  theme_minimal() + 
+  theme(
+    plot.title = element_text(hjust = 0.45),
+    plot.subtitle = element_text(hjust = 0.45),
+    axis.text.y = element_blank(),
+    panel.grid.major.y =  element_blank(),
+    axis.title.y= element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    axis.ticks.x = element_line(color = "grey")
+  ) 
+
+sale_box <- ggplot(train) + 
+  aes(x = factor(FullBath), y = SalePrice) + 
+  geom_boxplot(color = 'steelblue', outlier.color = 'firebrick', outlier.alpha = 0.35) +
+  scale_y_continuous(breaks= seq(0, 800000, by=100000), labels = comma) +
+  labs(title = 'Bathrooms Above Ground vs Sale Price', y = 'Sale Price', x= '#') +
+  theme_minimal() + 
+  theme(
+    plot.title = element_text(hjust = 0.45),
+    panel.grid.major.y =  element_line(color = "grey", linetype = "dashed"),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    axis.ticks.x = element_line(color = "grey")
+  )
+
+gridExtra::grid.arrange(sale_hist, sale_box, nrow=1)
+```
+8. Total Rooms Above Ground
+```{r}
+sale_hist <- ggplot(train) + 
+  aes(x = as.factor(TotRmsAbvGrd)) + 
+  geom_bar(stat = "count", fill = 'steelblue') +
+  geom_text(stat='count', aes(label=..count..), vjust=-.25, color = "gray20", size= 3) + 
+  labs(title = 'Total Rooms Above Ground', x= 'Rooms') +
+  theme_minimal() + 
+  theme(
+    plot.title = element_text(hjust = 0.45),
+    plot.subtitle = element_text(hjust = 0.45),
+    axis.text.y = element_blank(),
+    panel.grid.major.y =  element_blank(),
+    axis.title.y= element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    axis.ticks.x = element_line(color = "grey")
+  ) 
+
+sale_box <- ggplot(train) + 
+  aes(x = factor(TotRmsAbvGrd), y = SalePrice) + 
+  geom_boxplot(color = 'steelblue', outlier.color = 'firebrick', outlier.alpha = 0.35) +
+  scale_y_continuous(breaks= seq(0, 800000, by=100000), labels = comma) +
+  labs(title = 'Total Rooms Above Ground vs Sale Price', y = 'Sale Price', x= 'Rooms') +
+  theme_minimal() + 
+  theme(
+    plot.title = element_text(hjust = 0.45),
+    panel.grid.major.y =  element_line(color = "grey", linetype = "dashed"),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    axis.ticks.x = element_line(color = "grey")
+  )
+
+gridExtra::grid.arrange(sale_hist, sale_box, nrow=1)
+
+```
+9. Year Built
+```{r}
+hist <- ggplot(train) + 
+  aes(x = as.factor(YearBuilt)) + 
+  geom_bar(stat = "count", fill = 'steelblue') +
+  geom_text(stat='count', aes(label=..count..), vjust=-.25, color = "gray20", size= 3) + 
+  labs(title = 'Year Built', y = 'Count', x= 'Year') +
+  theme_minimal() + 
+  theme(
+    plot.title = element_text(hjust = 0.45),
+    plot.subtitle = element_text(hjust = 0.45),
+    axis.text.y = element_blank(),
+    axis.title.y= element_blank(),
+    axis.title.x= element_blank(),
+    panel.grid.major.y =  element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    axis.text.x = element_text(angle = 90),
+    axis.ticks.x = element_line(color = "grey")
+  ) 
+
+box <- ggplot(train) + 
+  aes(x = factor(YearBuilt), y = SalePrice) + 
+  geom_boxplot(color = 'steelblue', outlier.color = 'firebrick', outlier.alpha = 0.35) +
+  scale_y_continuous(breaks= seq(0, 800000, by=100000), labels = comma) +
+  labs(title = 'Year Built v Sale Price', y = 'Sale Price', x= 'Year') +
+  theme_minimal() + 
+  theme(
+    plot.title = element_text(hjust = 0.45),
+    panel.grid.major.y =  element_line(color = "grey", linetype = "dashed"),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.minor.x = element_blank(),
+     axis.title.x= element_blank(),
+    axis.text.x = element_text(angle = 90),
+    axis.ticks.x = element_line(color = "grey")
+  )
+
+
+gridExtra::grid.arrange(hist, box, ncol=1)
+
+```
+10. Garage Year Built
+```{r}
+hist <- ggplot(train) + 
+  aes(x = GarageYrBlt) + 
+  geom_histogram( bins = 30, fill = 'steelblue') +
+  labs(title = 'Garage - Year Built', y = 'Count', x= 'Year') +
+ scale_x_continuous(breaks= seq(0, 2020, by=10)) +
+  theme_minimal() + 
+  theme(
+    plot.title = element_text(hjust = 0.45),
+    plot.subtitle = element_text(hjust = 0.45),
+    panel.grid.major.y =  element_line(color = "grey", linetype = "dashed"),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    axis.ticks.x = element_line(color = "grey")
+  ) +
+  geom_vline(xintercept = 1906) + 
+  geom_vline(xintercept = 1948) +
+  geom_vline(xintercept = 1986)
+
+
+box <- train %>%
+  select(GarageYrBlt, SalePrice, GarageCars) %>% 
+#  filter(GarageCars != 0 ) %>%
+  mutate(garage_age_category = ifelse(GarageYrBlt < 1906, 'Oldest', 
+                                      ifelse(GarageYrBlt < 1948, 'Old', 
+                                             ifelse(GarageYrBlt < 1986, 'Average', 'New')))) %>%
+  ggplot() + 
+  aes(x = reorder(garage_age_category, SalePrice), y = SalePrice) + 
+  geom_boxplot(color = 'steelblue', outlier.color = 'firebrick', outlier.alpha = 0.35) +
+  scale_y_continuous(breaks= seq(0, 800000, by=100000), labels = comma) +
+  labs(title = 'Garage Age Category vs Sale Price', y = 'Sale Price', x= 'Age Type') +
+  theme_minimal() + 
+  theme(
+    plot.title = element_text(hjust = 0.45),
+    panel.grid.major.y =  element_line(color = "grey", linetype = "dashed"),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    axis.ticks.x = element_line(color = "grey")
+  )
+
+gridExtra::grid.arrange(hist, box, nrow=1)
+```
+11. Year Remodeled
+```{r}
+hist <- ggplot(train) + 
+  aes(x = as.factor(YearRemodAdd)) + 
+  geom_bar(stat = "count", fill = 'steelblue') +
+  geom_text(stat='count', aes(label=..count..), vjust=-.25, color = "gray20", size= 3) + 
+  labs(title = 'Year Remodeled', y = 'Count', x= 'Type') +
+  theme_minimal() + 
+  theme(
+    plot.title = element_text(hjust = 0.45),
+    plot.subtitle = element_text(hjust = 0.45),
+    axis.text.y = element_blank(),
+    axis.title.y= element_blank(),
+    axis.title.x= element_blank(),
+    panel.grid.major.y =  element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    axis.text.x = element_text(angle = 90),
+    axis.ticks.x = element_line(color = "grey")
+  ) 
+
+box <- ggplot(train) + 
+  aes(x = factor(YearRemodAdd), y = SalePrice) + 
+  geom_boxplot(color = 'steelblue', outlier.color = 'firebrick', outlier.alpha = 0.35) +
+  scale_y_continuous(breaks= seq(0, 800000, by=100000), labels = comma) +
+  labs(title = 'Year Remodeled v Sale Price', y = 'Sale Price', x= 'Type') +
+  theme_minimal() + 
+  theme(
+    plot.title = element_text(hjust = 0.45),
+    panel.grid.major.y =  element_line(color = "grey", linetype = "dashed"),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.minor.x = element_blank(),
+     axis.title.x= element_blank(),
+    axis.text.x = element_text(angle = 90),
+    axis.ticks.x = element_line(color = "grey")
+  )
+
+
+gridExtra::grid.arrange(hist, box, ncol=1)
+```
+```{r}
+sapply(train,function(x) sum(is.na(x)))
+```
+#Data Cleaning and Encoding
+--> Missing Values
+1. Garage Features
+```{r}
+train %>%  filter(is.na(GarageCars) & is.na(GarageArea)) %>% select('GarageCars', 'GarageArea', 'GarageType', 'GarageCond', 'GarageQual', 'GarageFinish')
+```
+```{r}
+train <- train %>% 
+  mutate(GarageCars = case_when( Id == 2577 & is.na(GarageCars) ~ 0, TRUE ~ GarageCars)) %>% 
+  mutate(GarageArea = case_when( Id == 2577 & is.na(GarageArea) ~ 0, TRUE ~ GarageArea)) %>%
+  mutate(GarageType = case_when( Id == 2577 & GarageType == 'Detchd' ~ NA_character_, TRUE ~ GarageType)) 
+```
+```{r}
+train <- train %>% 
+  mutate( GarageType = case_when( is.na(GarageType) ~ 'None', TRUE ~ GarageType)) %>% 
+  mutate( GarageYrBlt = case_when( is.na(GarageYrBlt) ~ YearBuilt, TRUE ~ GarageYrBlt)) %>% #defaulting to YearBuilt when there is no garage year built date
+  mutate(GarageFinish = case_when( is.na(GarageFinish) ~ 'None', TRUE ~ GarageFinish)) %>%
+  mutate(GarageQual = case_when( is.na(GarageQual) ~ 'None', TRUE ~ GarageQual)) %>%
+  mutate(GarageCond = case_when( is.na(GarageCond) ~ 'None', TRUE ~ GarageCond))
+```
+```{r}
+colSums(is.na(train %>% select(contains('Garage'))))
+```
+2. Basement Features
+```{r}
+train %>% 
+  filter((!is.na(BsmtFinType1) & (is.na(BsmtCond)|is.na(BsmtQual)|is.na(BsmtExposure)|is.na(BsmtFinType2)))) %>% select('Id', 'BsmtQual', 'BsmtCond', 'BsmtExposure', 'BsmtFinType1', 'BsmtFinType2')
+```
+```{r}
+train$BsmtQual <- train$BsmtQual %>% replace_na('None')
+train$BsmtCond <- train$BsmtCond %>% replace_na('None')
+train$BsmtExposure <- train$BsmtExposure %>% replace_na('None')
+train$BsmtFinType1 <- train$BsmtFinType1 %>% replace_na('None')
+train$BsmtFinType2 <- train$BsmtFinType2 %>% replace_na('None')
+train <- train %>% 
+  mutate(BsmtQual = case_when( Id %in% c(2218,2219) ~ NA_character_, TRUE ~ BsmtQual)) %>%
+  mutate(BsmtCond = case_when( Id %in% c(2041,2186,2525) ~ NA_character_, TRUE ~ BsmtCond)) %>%
+  mutate(BsmtExposure = case_when( Id %in% c(949,1488,2349) ~ NA_character_, TRUE ~ BsmtExposure)) %>%
+  mutate(BsmtFinType2 = case_when( Id %in% c(333) ~ NA_character_, TRUE ~ BsmtFinType2))
+```
+
+3. Alley
+```{r}
+train$Alley <- train$Alley %>% replace_na('None')
+```
+4. Fence
+```{r}
+train$Fence <- train$Fence %>% replace_na('None')
+```
+5. FirePlaceQu
+```{r}
+train$FireplaceQu <- train$FireplaceQu %>% replace_na('None')
+```
+6. MiscFeature
+```{r}
+train$MiscFeature <- train$MiscFeature %>% replace_na('None')
+```
+7. PoolQc
+```{r}
+train$PoolQC <- train$PoolQC %>% replace_na('None')
+
+train <- train %>% 
+  mutate(PoolQC = case_when( Id %in% c(2421,2504,2600) ~ NA_character_, TRUE ~ PoolQC)) 
+```
+--> FINAL LOOK
+```{r}
+colSums(is.na(train))
+```
+--> Setting to Data Frame
+```{r}
+train<-as.data.frame(train)
+```
+--> Setting NA as missing values
+```{r}
+na.strings=c("", "NA") 
+header=TRUE
+```
+-->Convert all character-type columns/attributes to factors
+```{r}
+str(train)
+```
+
+```{r}
+train <- as.data.frame(unclass(train), stringsAsFactors = TRUE)
+```
+
+```{r}
+skimmed <- skim(train)
+skimmed
+```
+#Imputation Missing Values
+--> K-NN Method Imputation
+```{r}
+set.seed(125)
+thisdata = kNN(train, k=5, imp_var = FALSE)
+sapply(thisdata,function(x) sum(is.na(x)))
+```
+```{r}
+View(thisdata)
+```
+```{r}
+thisdata <- thisdata %>% filter(Id != 458)
+```
+#Correlation Analysis (Hubungan Antar Variabel)
+```{r}
+numeric_cols <- thisdata %>% select_if(is.numeric)
+
+correlation <- cor(numeric_cols)
+
+sale_price_col <- as.matrix(abs(correlation[,'SalePrice']))
+ordered_matrix <- sale_price_col[order(sale_price_col, decreasing = TRUE),]
+
+names <- ordered_matrix[ordered_matrix > 0.5, drop = FALSE]
+names <- rownames(as.matrix(names[!is.na(names)]))
+
+filtered_cor_matrix <- correlation[names, names]
+#sorted_matrix <- filtered_cor_matrix[order(filtered_cor_matrix[,'SalePrice'], decreasing = TRUE),]
+
+corrplot.mixed(filtered_cor_matrix, tl.col="black", tl.pos = "lt")
+```
+##CLUSTERING ANALYSIS
+```{r}
+rownames(thisdata) <- thisdata$`Id`
+thisdata <- thisdata[,-1]
+head(thisdata)
+```
+```{r}
+boxplot(thisdata)
+```
+```{r}
+thisdata <- as.data.frame(unclass(thisdata), stringsAsFactors = TRUE)
+```
+```{r}
+str(thisdata)
+```
+```{r}
+subset_data <- subset(thisdata, select = c(OverallQual,GrLivArea, GarageCars, GarageArea, TotalBsmtSF, X1stFlrSF, FullBath, TotRmsAbvGrd, YearBuilt, GarageYrBlt,YearRemodAdd))
+```
+```{r}
+print(subset_data)
+```
+```{r}
+data <- scale(subset_data)
+boxplot(data)
+```
+
+```{r}
+fviz_nbclust(data, kmeans, method = "gap_stat") +
+  labs(subtitle = "Silhoutte method")
+```
+```{r}
+fviz_nbclust(data, kmeans, method = "wss") +
+  labs(subtitle = "Elbow method")
+```
+
+```{r}
+set.seed(123)
+km_out = kmeans(data, 7)
+```
+
+```{r}
+fviz_cluster(km_out, data = data)
+```
+```{r}
+res <- cbind(data, km_out$cluster)
+```
+```{r}
+res
+```
+```{r}
+new <- aggregate(res[,-ncol(res)], list(res[,ncol(res)]), mean)
+new
+```
+```{r}
+coul <- brewer.pal(7, "Dark2")
+colors_border <- coul
+library(scales)
+alpha_value <- 0.15
+colors_in <- adjustcolor(coul, alpha.f = alpha_value)
+
+# If you remove the 2 first lines, the function compute the max and min of each variable with the available data:
+radarchart( new[,-1], axistype=0 , maxmin=F,
+    #custom polygon
+    pcol=colors_border, pfcol=colors_in, plwd=5, plty=1,
+    #custom the grid
+    cglcol="grey", cglty=1, axislabcol="black", cglwd=0.8, 
+    #custom labels
+    vlcex=0.8 
+    )
+
+# Add a legend
+legend(x=2, y=1, legend = new$Group.1, bty = "n", pch=20, col=colors_in, text.col = "grey", cex=1.3, pt.cex=5)
+```
+```{r}
+k <- 7
+SSW <- sum(km_out$tot.withinss)
+SSB <- sum((colMeans(data) - km_out$centers)^2) * nrow(data)
+F_statistic <- (SSB / (k - 1)) / (SSW / (nrow(data) - k))
+# Calculate the p-value
+p_value <- 1 - pf(F_statistic, k-1, nrow(data) - k)
+
+# Print the F-statistic and p-value
+cat("F-statistic:", F_statistic, "\n")
+```
+```{r}
+cat("p-value:", p_value, "\n")
+```
+#Hierarchichal Clustering
+```{r}
+hc_complete = hclust(dist(data), method = "complete")
+```
+```{r}
+hc_average = hclust(dist(data), method = "average")
+hc_single = hclust(dist(data), method = "single")
+```
+```{r}
+plot_complete = ggdendrogram(hc_complete, rotate = FALSE, size = 2) + labs(title = "Complete Linkage") 
+plot_average = ggdendrogram(hc_average, rotate = FALSE, size = 2) + labs(title = "Average Linkage")
+plot_single = ggdendrogram(hc_single, rotate = FALSE, size = 2) + labs(title = "Single Linkage")
+
+grid.arrange(plot_complete)
+```
+```{r}
+grid.arrange(plot_average)
+```
+```{r}
+grid.arrange(plot_single)
+```
+```{r}
+ggdendrogram(hclust(dist(data), method = "complete"), 
+             rotate = FALSE, 
+             size = 2) + 
+  labs(title = "Complete Linkage with Scaled Features")
+```
+## ROBUSTNESS CHECK 
+# Model Non-LOG
+```{r}
+reg_model = lm(SalePrice~OverallQual+GrLivArea+GarageCars+TotalBsmtSF+X1stFlrSF+YearBuilt, data = thisdata)
+summary(reg_model)
+```
+#Validity By Test 
+#Linearity Assumption
+```{r}
+crPlots(reg_model)
+```
+--> UJI ASUMSI MODEL NON-LOG
+#Normality
+```{r}
+shapiro.test(reg_model$residuals)
+```
+#Heteroscedasticity
+```{r}
+bptest(reg_model)
+```
+#Multicollinearity
+```{r}
+VIF(reg_model)
+```
+#Autocorrelation
+```{r}
+dwtest(reg_model)
+```
+##MODEL LOGARITMA
+```{r}
+thisdata <- thisdata %>% 
+  mutate(SalePrice =log(SalePrice))
+View(thisdata)
+```
+```{r}
+reg_model = lm(SalePrice~OverallQual+GrLivArea+GarageCars+TotalBsmtSF+X1stFlrSF+YearBuilt, data = thisdata)
+summary(reg_model)
+```
+--> UJI ASUMSI MODEL LOGARITMA
+#Normality
+```{r}
+shapiro.test(reg_model$residuals)
+```
+#Heteroscedasticity
+```{r}
+bptest(reg_model)
+```
+#Multicollinearity
+```{r}
+VIF(reg_model)
+```
+#Autocorrelation
+```{r}
+dwtest(reg_model)
